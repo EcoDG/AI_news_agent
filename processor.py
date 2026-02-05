@@ -60,7 +60,9 @@ class ContentProcessor:
                     time.sleep(10 * (attempt + 1)) 
             
             if not summary_block:
-                summary_block = f"(번역 실패) {item['title']}\n- 요약 생성 불가 (API 한도 초과)\n- 원문 링크를 참고해주세요"
+                # Use the last captured exception error if available
+                error_msg = getattr(self, 'last_error', 'Unknown Error')
+                summary_block = f"(번역 실패) {item['title']}\n- 에러: {error_msg}\n- 원문: {item['link']}"
 
             # Add Agent Score Footer
             if 'agent_score' in item and item['agent_score'] > 0:
@@ -200,5 +202,6 @@ class ContentProcessor:
         try:
             return self._generate_content_robust(prompt)
         except Exception as e:
+            self.last_error = str(e) # Store error for debugging
             print(f"Summary generation failed: {e}")
             return None
