@@ -9,7 +9,7 @@ class Config:
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
     
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-    
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID")
     NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET")
     

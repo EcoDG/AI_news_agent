@@ -1,4 +1,5 @@
 import google.generativeai as genai
+from openai import OpenAI
 from config import Config
 from typing import Dict, List
 import re
@@ -10,10 +11,14 @@ class ContentProcessor:
         self.client = None
         if Config.GOOGLE_API_KEY:
             genai.configure(api_key=Config.GOOGLE_API_KEY)
-            # Fallback to flash-latest (might be 1.5 or 2.0 but hopes for different quota)
-            self.model = genai.GenerativeModel('gemini-flash-latest')
+            self.model = genai.GenerativeModel('gemini-1.5-flash') # Stable version
         else:
             print("Google API Key missing. Summarization will be skipped/mocked.")
+        
+        # Initialize OpenAI Client (Lazy load or check key)
+        self.openai_client = None
+        if Config.OPENAI_API_KEY:
+            self.openai_client = OpenAI(api_key=Config.OPENAI_API_KEY)
 
     def process_news(self, news_items: List[Dict]) -> List[Dict]:
         processed = []
@@ -107,9 +112,8 @@ class ContentProcessor:
         """
         
         try:
-            # Short timeout for scoring to save time
-            response = self.model.generate_content(prompt)
-            text = response.text.strip()
+            # Call Robust Generation
+            text = self._generate_content_robust(prompt)
             
             # Parse SCORE and REASON
             score_match = re.search(r"SCORE:\s*([\d\.]+)", text)
@@ -125,6 +129,52 @@ class ContentProcessor:
     def _clean_text(self, text: str) -> str:
         text = re.sub('<[^<]+?>', '', text)
         return text.strip()
+
+    def _generate_content_robust(self, prompt: str) -> str:
+        """
+        Try Gemini -> If 429/Exhausted -> Try OpenAI
+        """
+        # 1. Try Gemini
+        try:
+            if self.model:
+                response = self.model.generate_content(prompt)
+                # Check if response was blocked
+                if response.prompt_feedback and response.prompt_feedback.block_reason:
+                    raise Exception(f"Blocked by Gemini: {response.prompt_feedback.block_reason}")
+                return response.text.strip()
+        except Exception as e:
+            # Check for Resource Exhausted (429) or other API errors
+            error_str = str(e)
+            if "429" in error_str or "ResourceExhausted" in error_str or "Quota" in error_str or "Blocked by Gemini" in error_str:
+                print(f"⚠️ Gemini Quota Exceeded or Blocked. Switching to OpenAI Fallback...")
+                return self._call_openai_fallback(prompt)
+            else:
+                # Other errors (distinct API error), re-raise or try fallback?
+                # For safety, let's try fallback if it looks like an API issue
+                print(f"⚠️ Gemini Error: {e}. Trying OpenAI Fallback...")
+                return self._call_openai_fallback(prompt)
+        
+        # If model not initialized (e.g., no GOOGLE_API_KEY)
+        return self._call_openai_fallback(prompt)
+
+    def _call_openai_fallback(self, prompt: str) -> str:
+        if not self.openai_client:
+            print("❌ OpenAI Key missing. Cannot fallback.")
+            raise Exception("All LLMs failed & no fallback key.")
+            
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini", # Cost efficient
+                messages=[
+                    {"role": "system", "content": "You are a helpful AI news assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1000
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"❌ OpenAI Fallback failed: {e}")
+            raise e
 
     def _generate_v2_summary(self, title: str, content: str) -> str:
         prompt = f"""
@@ -147,9 +197,8 @@ class ContentProcessor:
         - Point 3 (Korean)
         """
         
-        response = self.model.generate_content(prompt)
-        # Check if response was blocked
-        if response.prompt_feedback and response.prompt_feedback.block_reason:
-            raise Exception(f"Blocked: {response.prompt_feedback.block_reason}")
-            
-        return response.text.strip()
+        try:
+            return self._generate_content_robust(prompt)
+        except Exception as e:
+            print(f"Summary generation failed: {e}")
+            return None
