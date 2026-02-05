@@ -1,4 +1,5 @@
 import feedparser
+import requests
 from typing import List, Dict
 from .base import NewsScraper
 from bs4 import BeautifulSoup
@@ -14,13 +15,14 @@ class RSSScraper(NewsScraper):
         # Priority Keywords
         if category == 'domestic':
             self.keywords = {
-                'AI Tool': 3, 'AI 도구': 3,
-                'AX': 5, 'AI 전환': 5, 'Transformation': 3, 'AX도입': 5,
+                'AI Tool': 10, 'AI 도구': 10,
+                '바이브코딩': 10, 'Vibe Coding': 10,
+                'AI 에이전트': 10, 'Agent': 10, 
+                'AX 도입 사례': 10, 'AX': 5, 'AI 전환': 5,
+                '업무 자동화': 10, 'Automation': 3,
+                'Transformation': 3, 'AX도입': 5,
                 '기업': 2, '도입': 2, '사례': 2, '구축': 2,
                 '업무': 1, '생산성': 1,
-                '바이브코딩': 5, 'Vibe Coding': 5,
-                '자동화': 3, 'Automation': 3,
-                '에이전트': 4, 'Agent': 4,
                 'RPA': 2, 'LLM': 2
             }
         else:
@@ -58,7 +60,13 @@ class RSSScraper(NewsScraper):
                     
                     # Clean summary for scoring
                     soup = BeautifulSoup(raw_summary, "html.parser")
-                    text_content = soup.get_text()
+                    text_content = soup.get_text().strip()
+                    
+                    # Two-Pass Extraction: If RSS summary is too short, fetch URL
+                    if len(text_content) < 200:
+                        fetched_text = self._fetch_full_content(link)
+                        if fetched_text:
+                            text_content = fetched_text # Override with full content
                     
                     score = self._calculate_score(title, text_content)
                     
@@ -101,3 +109,44 @@ class RSSScraper(NewsScraper):
         
         # Fallback: simple AI keyword check
         return any(k in text for k in base_keywords)
+
+    def _fetch_full_content(self, url: str) -> str:
+        """
+        Pass 2: Fetch article body or Meta Description
+        """
+        if not url: return ""
+        
+        try:
+            # Random User-Agent to avoid blocking
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+            resp = requests.get(url, headers=headers, timeout=5)
+            if resp.status_code != 200:
+                print(f"Failed to fetch {url}: {resp.status_code}")
+                return ""
+            
+            resp.encoding = resp.apparent_encoding
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            
+            # 1. Try <article>
+            article = soup.find('article')
+            if article:
+                return article.get_text(strip=True)
+            
+            # 2. Try common content divs
+            for class_name in ['main-content', 'article-body', 'post-content', 'entry-content', 'news_body', 'view_con']:
+                content_div = soup.find('div', class_=class_name)
+                if content_div:
+                    return content_div.get_text(strip=True)
+            
+            # 3. Fallback: Meta Description
+            meta_desc = soup.find('meta', attrs={'name': 'description'}) or soup.find('meta', attrs={'property': 'og:description'})
+            if meta_desc and meta_desc.get('content'):
+                return "[Meta] " + meta_desc['content']
+            
+            return ""
+            
+        except Exception as e:
+            print(f"Error fetching full content for {url}: {e}")
+            return ""
