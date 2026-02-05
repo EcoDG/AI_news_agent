@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+debug_*.py
+verify_*.py
+.vscode/
