@@ -62,7 +62,7 @@ class ContentProcessor:
             if not summary_block:
                 # Use the last captured exception error if available
                 error_msg = getattr(self, 'last_error', 'Unknown Error')
-                summary_block = f"(번역 실패) {item['title']}\n- 에러: {error_msg}\n- 원문: {item['link']}"
+                summary_block = f"(번역 실패) {item['title']}\n- ❌ 치명적 오류 발생: {error_msg}\n- 원문: {item['link']}"
 
             # Add Agent Score Footer
             if 'agent_score' in item and item['agent_score'] > 0:
