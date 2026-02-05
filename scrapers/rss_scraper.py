@@ -15,22 +15,33 @@ class RSSScraper(NewsScraper):
         # Priority Keywords
         if category == 'domestic':
             self.keywords = {
-                'AI Tool': 10, 'AI 도구': 10,
+                # [Domestic Grid]
                 '바이브코딩': 10, 'Vibe Coding': 10,
-                'AI 에이전트': 10, 'Agent': 10, 
-                'AX 도입 사례': 10, 'AX': 5, 'AI 전환': 5,
-                '업무 자동화': 10, 'Automation': 3,
-                'Transformation': 3, 'AX도입': 5,
+                'AI 에이전트 도입': 10, 'Agent': 5,
+                '업무 자동화 사례': 10, 'Automation': 5,
+                'AX': 5, 'AX 전략': 10, 'AI 전환': 5,
+                '생성형 AI 보안': 10, 'Security': 3,
+                'K-LLM': 10,
+                'AI B2B 솔루션': 10, 'B2B': 3,
+                
+                # Base
+                'AI Tool': 5, '도구': 2,
                 '기업': 2, '도입': 2, '사례': 2, '구축': 2,
-                '업무': 1, '생산성': 1,
-                'RPA': 2, 'LLM': 2
+                '업무': 1, '생산성': 1, 'RPA': 2
             }
         else:
             self.keywords = {
-                'AI Tool': 3, 'Productivity': 2,
-                'AX': 5, 'Transformation': 3,
+                # [Global Grid]
+                'Autonomous Agents': 10, 'Agentic Workflow': 10,
+                'Multi-agent': 10, 'AI-native': 10,
+                'Vibe coding': 10,
+                'LLM orchestration': 10,
+                'Generative AI security': 10, 'Shadow AI': 10,
+                
+                # Base
+                'AI Tool': 5, 'Transformation': 3,
                 'Enterprise': 3, 'Adoption': 3, 'Business': 1,
-                'Workforce': 1, 'Workplace': 1
+                'Productivity': 2, 'Workforce': 1
             }
 
     def fetch_news(self) -> List[Dict]:

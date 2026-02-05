@@ -75,8 +75,9 @@ class NaverNewsScraper(NewsScraper):
             "X-Naver-Client-Secret": Config.NAVER_CLIENT_SECRET
         }
         params = {
-            'query': 'AI OR "인공지능" OR AX',
-            'display': 5,
+            # V4 Query: High priority terms
+            'query': '"바이브코딩" OR "AI 에이전트" OR "AX" OR "업무 자동화" OR "생성형 AI 보안" OR "K-LLM"',
+            'display': 10, # Increased to filter by score
             'sort': 'date'
         }
         try:

@@ -3,6 +3,7 @@ import time
 import asyncio
 import sys
 from scrapers.rss_scraper import RSSScraper
+from scrapers.api_scraper import NaverNewsScraper
 from processor import ContentProcessor
 from notifier import TelegramNotifier
 from config import Config
@@ -16,44 +17,64 @@ def job():
         "https://techcrunch.com/category/artificial-intelligence/feed/",
         "https://venturebeat.com/category/ai/feed/",
         "https://www.artificialintelligence-news.com/feed/",
+        "https://feeds.bloomberg.com/markets/news.rss", # Added Bloomberg
     ]
     
-    # Domestic Sources
+    # Domestic Sources (RSS)
     domestic_feeds = [
-        "http://www.aitimes.com/rss/all.xml", # HTTP might work better
+        "https://www.aitimes.com/rss/allSection.xml", # Updated URL
         "https://rss.etnews.com/Section902.xml", 
-        "https://zdnet.co.kr/rss/all", # Direct RSS
+        "https://zdnet.co.kr/rss/all", 
     ]
     
     # 2. Fetch & Score
     print("Fetching International News...")
     intl_scraper = RSSScraper(intl_feeds, category='international')
     intl_items = intl_scraper.fetch_news()
-    # Sort by score desc, then date
     intl_items.sort(key=lambda x: x['score'], reverse=True)
-    top_intl = intl_items[:3]
+    candidates_intl = intl_items[:6] # Send top 6 to Agent
     
-    print("Fetching Domestic News...")
+    print("Fetching Domestic News (RSS + Naver API)...")
+    # 1. RSS
     dom_scraper = RSSScraper(domestic_feeds, category='domestic')
-    dom_items = dom_scraper.fetch_news()
-    # Sort by score desc
-    dom_items.sort(key=lambda x: x['score'], reverse=True)
-    top_dom = dom_items[:3]
+    dom_rss_items = dom_scraper.fetch_news()
     
-    print(f"Selected {len(top_intl)} International and {len(top_dom)} Domestic items.")
+    # 2. API
+    naver_scraper = NaverNewsScraper()
+    dom_api_items = naver_scraper.fetch_news()
     
-    # 3. Process (Summarize) with LLM
+    # Merge & Deduplicate
+    all_dom_items = dom_rss_items + dom_api_items
+    unique_dom = []
+    seen_titles = set()
+    
+    for item in all_dom_items:
+        # Normalize title for dedup
+        norm_title = item['title'].replace(' ', '').lower()
+        if norm_title not in seen_titles:
+            unique_dom.append(item)
+            seen_titles.add(norm_title)
+            
+    # Sort by keyword score
+    unique_dom.sort(key=lambda x: x.get('score', 0), reverse=True)
+    candidates_dom = unique_dom[:6] # Send top 6 to Agent
+    
+    print(f"Candidates for Agent Scoring: {len(candidates_intl)} Intl, {len(candidates_dom)} Domestic.")
+    
+    # 3. Process (Agent Scoring + Summarize)
     processor = ContentProcessor()
     
-    print("Processing International items...")
-    processed_intl = processor.process_news(top_intl)
+    print("Agent evaluating International items...")
+    processed_intl = processor.process_news(candidates_intl)
+    final_intl = processed_intl[:3] # Pick Top 3 Survivors
     
-    print("Processing Domestic items...")
-    processed_dom = processor.process_news(top_dom)
+    print("Agent evaluating Domestic items...")
+    processed_dom = processor.process_news(candidates_dom)
+    final_dom = processed_dom[:3] # Pick Top 3 Survivors
     
     # 4. Notify
     notifier = TelegramNotifier()
-    asyncio.run(notifier.send_daily_brief(processed_intl, processed_dom))
+    asyncio.run(notifier.send_daily_brief(final_intl, final_dom))
     
     print("=== Job Finished ===")
 
