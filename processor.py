@@ -5,6 +5,7 @@ from typing import Dict, List
 import re
 import time
 import random
+import json
 
 class ContentProcessor:
     def __init__(self):
@@ -33,9 +34,10 @@ class ContentProcessor:
             
             # --- Scoring Agent Step ---
             try:
-                score, reason = self._evaluate_relevance(item['title'], clean_content)
+                score, reason, action = self._evaluate_relevance(item['title'], clean_content)
                 item['agent_score'] = score
                 item['agent_reason'] = reason
+                item['agent_action'] = action
                 
                 print(f"  > Scoring '{item['title'][:20]}...': {score}/10")
                 
@@ -66,7 +68,7 @@ class ContentProcessor:
 
             # Add Agent Score Footer
             if 'agent_score' in item and item['agent_score'] > 0:
-                summary_block += f"\n\n[🤖 에이전트 판단: {item['agent_score']}점 / {item['agent_reason']}]"
+                summary_block += f"\n\n[🤖 에이전트 판단: {item['agent_score']}점]\n- 이유: {item['agent_reason']}\n- 실행: {item.get('agent_action', '없음')}"
 
             item['processed_summary'] = summary_block
             processed.append(item)
@@ -90,43 +92,75 @@ class ContentProcessor:
 
         return processed
 
-    def _evaluate_relevance(self, title: str, content: str) -> (float, str):
+    def _evaluate_relevance(self, title: str, content: str) -> (float, str, str):
         """
-        V4 Scoring Agent: Evaluate Practicality, Impact, Novelty
-        Returns: (Average Score, One-line Reason)
+        V4 Scoring Agent v3.0: AX Implementation Lead Persona
+        Returns: (Score, Reason, Action Item)
         """
         prompt = f"""
-        Role: 10-year IT Strategy Consultant.
-        Task: Evaluate the importance of this news for Enterprise AI/AX adoption.
+        # AI/AX News Scoring Prompt v3.0
         
-        News:
+        ## Role
+        You are an **AX (AI Transformation) Lead** at a large enterprise.
+        
+        ## Task
+        Score this news article based on: **"Will this help me do my AX job better TODAY or THIS WEEK?"**
+        
+        ## News
         Title: {title}
         Content: {content}
-        
-        Criteria (0-10):
-        1. Practicality: immediate application to business/automation?
-        2. Impact: Large scale or major tech giant move?
-        3. Novelty: New trend/insight vs generic news?
-        
-        Output Format (Strictly JSON-like):
-        SCORE: [Average Score float]
-        REASON: [One sentence summary of why]
+
+        ## Evaluation Criteria (0-10 scale)
+
+        ### 🛠️ TIER 1: Tool/Product Updates (Most Important)
+        **10 points - MUST READ:** Major model releases (GPT-5, Claude Opus), Significant feature updates, Critical issues.
+        **7 points - IMPORTANT:** Minor updates, Benchmarks, Pricing changes.
+        **Specific Tool Checklist:** Claude, OpenAI, Cursor, Windsurf, n8n, Zapier, Microsoft Copilot. (If YES -> +3 points)
+
+        ### 🏢 TIER 2: Enterprise Implementation
+        **10 points - MUST READ:** Specific metrics (ROI, time saved), Detailed process.
+        **7 points - IMPORTANT:** Case study with clear methodology, C-level strategy.
+        **Examples:** "Time saved 40%", "Cost reduction"
+
+        ### 📊 TIER 3: Industry Insights
+        **10 points:** Analyst reports (Gartner) with data, ROI studies.
+        **7 points:** Expert analysis, Regulatory updates.
+
+        ## RED FLAGS (Auto-reject 0 points)
+        - No mention of specific tools/companies
+        - Abstract future predictions / Ethics debates
+        - General hiring/stock news
+
+        ## Output Format (JSON)
+        {{
+          "score": 8.5,
+          "category": "TOOL_UPDATE | CASE_STUDY | INSIGHT",
+          "relevance": "HIGH | MEDIUM | LOW",
+          "reason": "[1-line Korean summary of why this matters for AX practitioners]",
+          "action_item": "[What you can do with this info: e.g., '팀 미팅에서 도구 전환 검토 필요']",
+          "decision": "ACCEPT | REJECT"
+        }}
         """
         
         try:
             # Call Robust Generation
             text = self._generate_content_robust(prompt)
             
-            # Parse SCORE and REASON
-            score_match = re.search(r"SCORE:\s*([\d\.]+)", text)
-            reason_match = re.search(r"REASON:\s*(.+)", text, re.DOTALL)
+            # JSON Parsing Logic
+            # Strip markdown code blocks if present
+            clean_json = re.sub(r"```json", "", text)
+            clean_json = re.sub(r"```", "", clean_json).strip()
             
-            score = float(score_match.group(1)) if score_match else 5.0
-            reason = reason_match.group(1).strip() if reason_match else "판단 근거 없음"
+            data = json.loads(clean_json)
             
-            return score, reason
-        except Exception:
-            return 8.0, "평가 불가 (Pass)" # Default to pass on error to avoid over-filtering when API is shaky
+            score = float(data.get('score', 0))
+            reason = data.get('reason', "판단 근거 없음")
+            action = data.get('action_item', "참고")
+            
+            return score, reason, action
+        except Exception as e:
+            print(f"Scoring Error: {e}")
+            return 8.0, "평가 불가 (Pass)", "내용 확인 필요" # Default to pass on error
 
     def _clean_text(self, text: str) -> str:
         text = re.sub('<[^<]+?>', '', text)
