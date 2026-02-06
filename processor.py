@@ -171,8 +171,31 @@ class ContentProcessor:
             return score, reason, action
 
         except Exception as e:
-            print(f"Scoring Error: {e} | Text: {text[:50] if 'text' in locals() else 'No Text'}")
-            return 8.0, "평가 불가 (Pass)", "내용 확인 필요" # Default to pass on error
+            print(f"Scoring Error: {e} | Fallback to Heuristic")
+            # Heuristic Fallback
+            h_score, h_reason, h_action = self._heuristic_score(title, content)
+            return h_score, h_reason, h_action
+
+    def _heuristic_score(self, title: str, content: str) -> (float, str, str):
+        """
+        Fallback scoring based on Keyword Matching when LLM fails.
+        """
+        text = (title + " " + content).lower()
+        
+        # Tier S Keywords (+9.0)
+        tier_s = ["claude", "gemini", "gpt-5", "gpt-4", "cursor", "windsurf", "agent", "opus"]
+        for kw in tier_s:
+            if kw in text:
+                return 9.0, f"주요 키워드 감지 ({kw}) - API 대체 평가", "내용 확인 요망"
+        
+        # Tier A Keywords (+8.0)
+        tier_a = ["automation", "workflow", "enterprise", "기업", "자동화", "도입", "사례"]
+        for kw in tier_a:
+            if kw in text:
+                return 8.0, f"관련 키워드 감지 ({kw}) - API 대체 평가", "업무 활용 가능성 있음"
+                
+        # Default Pass
+        return 7.5, "기본 점수 (API 오류로 인한 통과)", "참고"
 
     def _clean_text(self, text: str) -> str:
         text = re.sub('<[^<]+?>', '', text)
