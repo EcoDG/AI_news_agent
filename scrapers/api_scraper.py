@@ -67,7 +67,6 @@ class NewsAPIScraper(NewsScraper):
 NAVER_QUERIES = {
     # TIER 1: Core Priority (Attempts first)
     "tier1": [
-    "tier1": [
         '"Claude" OR "클로드"', 
         '"Gemini" OR "제미나이"',
         '"GPT" OR "ChatGTP" OR "챗GPT"',
@@ -77,7 +76,6 @@ NAVER_QUERIES = {
         '"AI 에이전트" OR "업무 자동화"',
         '"생성형 AI" AND 기업',
         '"AX" AND 사례',
-    ],
     ],
     
     # TIER 2: Fallback (If Tier 1 is empty)
