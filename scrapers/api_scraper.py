@@ -68,6 +68,7 @@ NAVER_QUERIES = {
     # TIER 1: Core Priority (Attempts first)
     "tier1": [
         '"Claude" AND (업데이트 OR 발표 OR 출시)',
+        '"Gemini" AND (업데이트 OR 발표 OR 출시)',
         '"GPT" AND (API OR 기업 OR 엔터프라이즈)',
         '"코딩 에이전트"',
         '"AI 코딩"',

@@ -12,6 +12,7 @@ import re
 KEYWORD_TIER_S = {
     "keywords": [
         "Claude Code", "GPT-4", "GPT-5", "Opus 4.6",
+        "Gemini 1.5", "Gemini 2.0", "Google Gemini",
         "GitHub Copilot", "Cursor", "Windsurf",
         "OpenClaw", "Oh-My-OpenCode",
     ],
