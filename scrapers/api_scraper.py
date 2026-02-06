@@ -64,7 +64,7 @@ class NewsAPIScraper(NewsScraper):
             return []
 
 class NaverNewsScraper(NewsScraper):
-    def fetch_news(self) -> List[Dict]:
+    def fetch_news(self, query=None, display=20) -> List[Dict]:
         if not Config.NAVER_CLIENT_ID or not Config.NAVER_CLIENT_SECRET:
             print("Naver API keys missing. Skipping.")
             return []
@@ -74,10 +74,14 @@ class NaverNewsScraper(NewsScraper):
             "X-Naver-Client-Id": Config.NAVER_CLIENT_ID,
             "X-Naver-Client-Secret": Config.NAVER_CLIENT_SECRET
         }
+        
+        # Default Query (V4 Niche)
+        if not query:
+            query = '"바이브코딩" OR "AI 에이전트" OR "AX" OR "업무 자동화" OR "생성형 AI 보안" OR "K-LLM"'
+            
         params = {
-            # V4 Query: High priority terms
-            'query': '"바이브코딩" OR "AI 에이전트" OR "AX" OR "업무 자동화" OR "생성형 AI 보안" OR "K-LLM"',
-            'display': 10, # Increased to filter by score
+            'query': query,
+            'display': display, 
             'sort': 'date'
         }
         try:
