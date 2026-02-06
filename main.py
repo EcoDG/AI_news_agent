@@ -76,6 +76,21 @@ def job():
     
     # 4. Notify
     notifier = TelegramNotifier()
+    
+    # [Diagnostic Debug] If Domestic is empty, append debug info
+    if not final_dom:
+        debug_msg = "\n[🔍 디버그 정보]\n"
+        debug_msg += f"- Naver ID Loaded: {'YES' if Config.NAVER_CLIENT_ID else 'NO'}\n"
+        debug_msg += f"- Naver Secret Loaded: {'YES' if Config.NAVER_CLIENT_SECRET else 'NO'}\n"
+        debug_msg += f"- Google Key Loaded: {'YES' if Config.GOOGLE_API_KEY else 'NO'}\n"
+        debug_msg += f"- Raw Naver items found: {len(dom_api_items)}\n"
+        debug_msg += f"- Raw/Dedup/Candidate: {len(dom_api_items)}/{len(unique_dom)}/{len(candidates_dom)}"
+        
+        # Append as a mock item so it shows up
+        final_dom.append({
+            'processed_summary': debug_msg
+        })
+
     asyncio.run(notifier.send_daily_brief(final_intl, final_dom))
     
     print("=== Job Finished ===")

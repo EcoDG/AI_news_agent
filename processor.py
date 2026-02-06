@@ -64,7 +64,8 @@ class ContentProcessor:
             if not summary_block:
                 # [Graceful Fallback] If all LLMs fail, show raw content instead of error
                 fallback_text = clean_content[:300] if clean_content else "원문 링크를 참고해주세요."
-                summary_block = f"{item['title']}\n{fallback_text}...\n\n[⚠️ AI 요약 불가: 원문 미리보기]"
+                last_error = getattr(self, 'last_error', 'Unknown Error')
+                summary_block = f"{item['title']}\n{fallback_text}...\n\n[⚠️ AI 요약 불가: {last_error}]"
 
             # Add Agent Score Footer
             if 'agent_score' in item and item['agent_score'] > 0:
