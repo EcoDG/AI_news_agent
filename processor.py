@@ -145,21 +145,33 @@ class ContentProcessor:
         try:
             # Call Robust Generation
             text = self._generate_content_robust(prompt)
+            print(f"Debug Raw Text: {text[:100]}...") # Debug log
+
+            # Robust JSON Extraction
+            # Find the substring that looks like a JSON object: { ... }
+            json_match = re.search(r'(\{.*\})', text, re.DOTALL)
             
-            # JSON Parsing Logic
-            # Strip markdown code blocks if present
-            clean_json = re.sub(r"```json", "", text)
-            clean_json = re.sub(r"```", "", clean_json).strip()
-            
-            data = json.loads(clean_json)
+            if json_match:
+                json_str = json_match.group(1)
+                try:
+                    data = json.loads(json_str)
+                except json.JSONDecodeError:
+                    # Try to fix common JSON errors (newline in string)
+                    json_str = json_str.replace('\n', ' ')
+                    data = json.loads(json_str)
+            else:
+                # Fallback if no {} found
+                print(f"⚠️ No JSON found in response. Text: {text[:50]}...")
+                raise ValueError("No JSON object found")
             
             score = float(data.get('score', 0))
             reason = data.get('reason', "판단 근거 없음")
             action = data.get('action_item', "참고")
             
             return score, reason, action
+
         except Exception as e:
-            print(f"Scoring Error: {e}")
+            print(f"Scoring Error: {e} | Text: {text[:50] if 'text' in locals() else 'No Text'}")
             return 8.0, "평가 불가 (Pass)", "내용 확인 필요" # Default to pass on error
 
     def _clean_text(self, text: str) -> str:
