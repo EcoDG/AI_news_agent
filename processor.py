@@ -134,29 +134,34 @@ class ContentProcessor:
 
     def _generate_content_robust(self, prompt: str) -> str:
         """
-        Try Gemini -> If 429/Exhausted -> Try OpenAI
+        Try Gemini (with retries) -> If 429/Exhausted -> Try OpenAI
         """
-        # 1. Try Gemini
-        try:
-            if self.model:
-                response = self.model.generate_content(prompt)
-                # Check if response was blocked
-                if response.prompt_feedback and response.prompt_feedback.block_reason:
-                    raise Exception(f"Blocked by Gemini: {response.prompt_feedback.block_reason}")
-                return response.text.strip()
-        except Exception as e:
-            # Check for Resource Exhausted (429) or other API errors
-            error_str = str(e)
-            if "429" in error_str or "ResourceExhausted" in error_str or "Quota" in error_str or "Blocked by Gemini" in error_str:
-                print(f"⚠️ Gemini Quota Exceeded or Blocked. Switching to OpenAI Fallback...")
-                return self._call_openai_fallback(prompt)
-            else:
-                # Other errors (distinct API error), re-raise or try fallback?
-                # For safety, let's try fallback if it looks like an API issue
-                print(f"⚠️ Gemini Error: {e}. Trying OpenAI Fallback...")
-                return self._call_openai_fallback(prompt)
-        
-        # If model not initialized (e.g., no GOOGLE_API_KEY)
+        # 1. Try Gemini with Retries
+        if self.model:
+            for attempt in range(3): # Try 3 times
+                try:
+                    response = self.model.generate_content(prompt)
+                    # Check if response was blocked
+                    if response.prompt_feedback and response.prompt_feedback.block_reason:
+                        raise Exception(f"Blocked by Gemini: {response.prompt_feedback.block_reason}")
+                    return response.text.strip()
+                except Exception as e:
+                    error_str = str(e)
+                    # If it's the last attempt, check if we should fallback
+                    if attempt == 2:
+                        print(f"⚠️ Gemini failed after 3 attempts: {e}")
+                        break # Exit loop to trigger fallback
+                        
+                    # If quota related, wait and retry
+                    if "429" in error_str or "ResourceExhausted" in error_str:
+                        print(f"⚠️ Gemini Rate Limit (Attempt {attempt+1}/3). Waiting 20s...")
+                        time.sleep(20)
+                    else:
+                        print(f"⚠️ Gemini Error (Attempt {attempt+1}/3): {e}. Waiting 5s...")
+                        time.sleep(5)
+
+        # 2. Fallback to OpenAI
+        print("🔄 Switching to OpenAI Fallback...")
         return self._call_openai_fallback(prompt)
 
     def _call_openai_fallback(self, prompt: str) -> str:

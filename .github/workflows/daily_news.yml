@@ -2,8 +2,8 @@ name: Daily AI News Bot
 
 on:
   schedule:
-    # 00:00 UTC = 09:00 KST
-    - cron: '0 0 * * *'
+    # 23:30 UTC = 08:30 KST (Avoid peak hour)
+    - cron: '30 23 * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
