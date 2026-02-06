@@ -63,6 +63,33 @@ class NewsAPIScraper(NewsScraper):
             print(f"Error fetching NewsAPI: {e}")
             return []
 
+# Naver Query Strategy v2.0
+NAVER_QUERIES = {
+    # TIER 1: Core Priority (Attempts first)
+    "tier1": [
+        '"Claude" AND (업데이트 OR 발표 OR 출시)',
+        '"GPT" AND (API OR 기업 OR 엔터프라이즈)',
+        '"코딩 에이전트"',
+        '"AI 코딩"',
+        '"Cursor" OR "Windsurf" OR "Cline"',
+        '("AI 에이전트" OR "업무 자동화") AND (도입 OR 적용 OR 효과)',
+        '"생성형 AI" AND (기업 OR 전사)',
+        '"AX" AND (사례 OR 성과)',
+        '"AI 도구" AND (이슈 OR 문제 OR 비교)',
+    ],
+    
+    # TIER 2: Fallback (If Tier 1 is empty)
+    "tier2": [
+        '"AI 도입"',
+        '"생성형 AI" AND (기업 OR 산업)',
+        '"LLM" AND (활용 OR 적용)',
+        '"ChatGPT" AND (업무 OR 자동화)',
+        '"인공지능" AND (솔루션 OR 서비스)'
+    ],
+    
+    "exclude": ['-게임', '-웹툰', '-영화', '-연예', '-아이돌', '-캐릭터', '-NFT']
+}
+
 class NaverNewsScraper(NewsScraper):
     def fetch_news(self, query=None, display=20) -> List[Dict]:
         if not Config.NAVER_CLIENT_ID or not Config.NAVER_CLIENT_SECRET:
@@ -74,31 +101,59 @@ class NaverNewsScraper(NewsScraper):
             "X-Naver-Client-Id": Config.NAVER_CLIENT_ID,
             "X-Naver-Client-Secret": Config.NAVER_CLIENT_SECRET
         }
+
+        all_items = []
+        seen_links = set()
         
-        # Default Query (V4 Niche)
-        if not query:
-            query = '"바이브코딩" OR "AI 에이전트" OR "AX" OR "업무 자동화" OR "생성형 AI 보안" OR "K-LLM"'
+        # Strategy: Tier 1 -> Check Count -> Tier 2 if needed
+        # Or if manual query provided, use that.
+        
+        query_list = []
+        if query:
+            query_list = [query]
+        else:
+            query_list = NAVER_QUERIES["tier1"]
+
+        # 1. Fetch Tier 1 (or manual query)
+        print("  [Naver] Fetching Tier 1 Queries...")
+        self._execute_queries(url, headers, query_list, display, all_items, seen_links)
+        
+        # 2. Check Fallback
+        if not query and len(all_items) < 3:
+            print(f"  [Naver] Tier 1 only found {len(all_items)} items. Trying Tier 2...")
+            self._execute_queries(url, headers, NAVER_QUERIES["tier2"], display, all_items, seen_links)
+
+        return all_items
+
+    def _execute_queries(self, url, headers, queries, display, collection, seen_links):
+        base_display = max(5, int(display / max(1, len(queries)))) # Distribute display count
+        
+        for q in queries:
+            # Append excludes
+            full_query = q + " " + " ".join(NAVER_QUERIES["exclude"])
             
-        params = {
-            'query': query,
-            'display': display, 
-            'sort': 'date'
-        }
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            items = []
-            for item in response.json().get('items', []):
-                # Naver returns titles with bold tags
-                clean_title = item.get('title', '').replace('<b>', '').replace('</b>', '').replace('&quot;', '"')
-                items.append({
-                    'title': clean_title,
-                    'link': item.get('originallink') or item.get('link'),
-                    'source': 'Naver News',
-                    'published': item.get('pubDate'),
-                    'summary': item.get('description', '').replace('<b>', '').replace('</b>', '')
-                })
-            return items
-        except Exception as e:
-            print(f"Error fetching Naver News: {e}")
-            return []
+            params = {
+                'query': full_query,
+                'display': base_display, 
+                'sort': 'date'
+            }
+            try:
+                response = requests.get(url, headers=headers, params=params)
+                if response.status_code != 200: continue
+                
+                for item in response.json().get('items', []):
+                    link = item.get('originallink') or item.get('link')
+                    if link in seen_links: continue
+                    
+                    clean_title = item.get('title', '').replace('<b>', '').replace('</b>', '').replace('&quot;', '"')
+                    
+                    seen_links.add(link)
+                    collection.append({
+                        'title': clean_title,
+                        'link': link,
+                        'source': 'Naver News',
+                        'published': item.get('pubDate'),
+                        'summary': item.get('description', '').replace('<b>', '').replace('</b>', '')
+                    })
+            except Exception as e:
+                print(f"Error Naver query '{q}': {e}")

@@ -43,13 +43,7 @@ def job():
     # 2. API
     naver_scraper = NaverNewsScraper()
     dom_api_items = naver_scraper.fetch_news()
-    print(f"  - Naver Items (Niche): {len(dom_api_items)}")
-    
-    # Fallback: If Naver items are too few, try broad search
-    if len(dom_api_items) < 3:
-        print("  ! Naver Niche results too few. Trying Broad Search...")
-        dom_api_items += naver_scraper.fetch_news(query='"인공지능" OR "AI"', display=15)
-        print(f"  - Naver Items (Total after broad): {len(dom_api_items)}")
+    print(f"  - Naver Items: {len(dom_api_items)}")
     
     # Merge & Deduplicate
     all_dom_items = dom_rss_items + dom_api_items

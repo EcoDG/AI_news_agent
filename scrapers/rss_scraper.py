@@ -3,46 +3,69 @@ import requests
 from typing import List, Dict
 from .base import NewsScraper
 from bs4 import BeautifulSoup
+import re
+
+# ========================================
+# 해외 뉴스 키워드 가중치 (RSS Feed) v2.0
+# ========================================
+
+KEYWORD_TIER_S = {
+    "keywords": [
+        "Claude Code", "GPT-4", "GPT-5", "Opus 4.6",
+        "GitHub Copilot", "Cursor", "Windsurf",
+        "OpenClaw", "Oh-My-OpenCode",
+    ],
+    "score": 15
+}
+
+KEYWORD_TIER_A = {
+    "keywords": [
+        "autonomous agents", "agentic workflow", "AI adoption",
+        "multi-agent", "implementation case study",
+        "Gartner", "McKinsey", "a16z",
+        "Vibe coding", "LLM orchestration", "Generative AI security", "Shadow AI"
+    ],
+    "score": 10
+}
+
+KEYWORD_TIER_B = {
+    "keywords": [
+        "LLM orchestration", "enterprise AI", "workflow automation",
+        "tool comparison", "benchmark", "AI Tool",
+        "Transformation", "Enterprise"
+    ],
+    "score": 5
+}
+
+KEYWORD_TIER_C = {
+    "keywords": [
+        "AI tool", "generative AI", "transformation",
+        "digital", "productivity",
+    ],
+    "score": 2
+}
+
+NEGATIVE_KEYWORDS = {
+    "keywords": [
+        "consumer app", "gaming", "NFT", "metaverse", "crypto", "web3",
+        "hiring", "job posting", "conference", "webinar", "event",
+    ],
+    "score": -99
+}
+
+IMMEDIATE_REJECT_PATTERNS = [
+    r"conference|webinar|summit|event",
+    r"launching soon|beta.*release|coming soon",
+    r"free trial|promotion",
+    r"game|movie|webtoon|idol|entertainment",
+    r"cryptocurrency|NFT|metaverse",
+]
 
 class RSSScraper(NewsScraper):
     def __init__(self, feeds: List[str], category: str = "general"):
-        """
-        category: 'domestic' or 'international'
-        """
         self.feeds = feeds
         self.category = category
-        
-        # Priority Keywords
-        if category == 'domestic':
-            self.keywords = {
-                # [Domestic Grid]
-                '바이브코딩': 10, 'Vibe Coding': 10,
-                'AI 에이전트 도입': 10, 'Agent': 5,
-                '업무 자동화 사례': 10, 'Automation': 5,
-                'AX': 5, 'AX 전략': 10, 'AI 전환': 5,
-                '생성형 AI 보안': 10, 'Security': 3,
-                'K-LLM': 10,
-                'AI B2B 솔루션': 10, 'B2B': 3,
-                
-                # Base
-                'AI Tool': 5, '도구': 2,
-                '기업': 2, '도입': 2, '사례': 2, '구축': 2,
-                '업무': 1, '생산성': 1, 'RPA': 2
-            }
-        else:
-            self.keywords = {
-                # [Global Grid]
-                'Autonomous Agents': 10, 'Agentic Workflow': 10,
-                'Multi-agent': 10, 'AI-native': 10,
-                'Vibe coding': 10,
-                'LLM orchestration': 10,
-                'Generative AI security': 10, 'Shadow AI': 10,
-                
-                # Base
-                'AI Tool': 5, 'Transformation': 3,
-                'Enterprise': 3, 'Adoption': 3, 'Business': 1,
-                'Productivity': 2, 'Workforce': 1
-            }
+        self.keywords = {} # Not used in v2.0 logic directly
 
     def fetch_news(self) -> List[Dict]:
         news_items = []
@@ -60,36 +83,45 @@ class RSSScraper(NewsScraper):
                     print(f"Feed bozo error: {feed.bozo_exception}")
                     continue
                 
-                # Check top 10 from each feed
-                for entry in feed.entries[:10]: 
+                # Check top 15 from each feed (increased from 10)
+                for entry in feed.entries[:15]: 
                     link = entry.get('link', '')
                     if link in seen_links:
                         continue
                         
                     title = entry.get('title', '')
+                    
+                    # 1. Immediate Reject Check
+                    if self._should_reject_immediately(title):
+                        print(f"  [Reject] {title[:30]}... (Pattern Match)")
+                        continue
+
                     raw_summary = entry.get('summary', '') or entry.get('description', '')
                     
                     # Clean summary for scoring
                     soup = BeautifulSoup(raw_summary, "html.parser")
                     text_content = soup.get_text().strip()
                     
-                    # Two-Pass Extraction: If RSS summary is too short, fetch URL
+                    # Two-Pass Extraction check
                     if len(text_content) < 200:
                         fetched_text = self._fetch_full_content(link)
                         if fetched_text:
-                            text_content = fetched_text # Override with full content
+                            text_content = fetched_text 
                     
                     score = self._calculate_score(title, text_content)
                     
-                    # Basic relevance check (score > 0 OR contains basic AI/AX terms)
-                    # For strict filtering, we can enforce score > X.
-                    # Here we keep minimal filter, main.py will pick Top X.
-                    if self._is_relevant(title, text_content, score):
+                    # Negative Score Check
+                    if score < 0:
+                        print(f"  [Reject] {title[:30]}... (Negative Score)")
+                        continue
+
+                    # Threshold Check (Tier C min)
+                    if score >= 2:
                         seen_links.add(link)
                         news_items.append({
                             'title': title,
                             'link': link,
-                            'summary': text_content[:500], # Store cleaned text, truncated
+                            'summary': text_content[:500],
                             'source': feed.feed.get('title', 'RSS Feed'),
                             'published': entry.get('published', ''),
                             'score': score,
@@ -104,22 +136,41 @@ class RSSScraper(NewsScraper):
         score = 0
         text = (title + " " + content).lower()
         
-        for kw, points in self.keywords.items():
+        # Check Negative First
+        for kw in NEGATIVE_KEYWORDS["keywords"]:
             if kw.lower() in text:
-                score += points
+                return -99
+
+        # Tier S
+        for kw in KEYWORD_TIER_S["keywords"]:
+            if kw.lower() in text:
+                score += KEYWORD_TIER_S["score"]
+        
+        # Tier A
+        for kw in KEYWORD_TIER_A["keywords"]:
+            if kw.lower() in text:
+                score += KEYWORD_TIER_A["score"]
+
+        # Tier B
+        for kw in KEYWORD_TIER_B["keywords"]:
+            if kw.lower() in text:
+                score += KEYWORD_TIER_B["score"]
+
+        # Tier C
+        for kw in KEYWORD_TIER_C["keywords"]:
+            if kw.lower() in text:
+                score += KEYWORD_TIER_C["score"]
                 
         return score
 
+    def _should_reject_immediately(self, title: str) -> bool:
+        for pattern in IMMEDIATE_REJECT_PATTERNS:
+            if re.search(pattern, title, re.IGNORECASE):
+                return True
+        return False
+        
     def _is_relevant(self, title: str, content: str, score: int) -> bool:
-        # Base filter: Must contain some AI reference or have a high score
-        base_keywords = ['ai', 'gpt', 'llm', 'generative', '인공지능', '모델']
-        text = (title + " " + content).lower()
-        
-        # If score is high (matches AX/Tool keywords) -> Relevant
-        if score >= 1: return True
-        
-        # Fallback: simple AI keyword check
-        return any(k in text for k in base_keywords)
+        return score >= 2
 
     def _fetch_full_content(self, url: str) -> str:
         """
