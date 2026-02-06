@@ -219,23 +219,82 @@ class ContentProcessor:
 
     def _generate_v2_summary(self, title: str, content: str) -> str:
         prompt = f"""
-        Role: Professional Tech News Editor for Korean Audience.
-        
-        Input:
+        # Complete Translation & Summary Prompt v3.0
+
+        ## Role
+        You are a **Professional Tech News Editor** for Korean AX practitioners.
+
+        ## Your Mission
+        Transform English tech news into **natural Korean** that reads like it was originally written by a Korean tech journalist at 테크크런치 or 블로터.
+
+        ## Input
         Title: {title}
         Content: {content}
 
-        Instructions:
-        1. **TRANSLATE** the title into natural Korean. (CRITICAL)
-        2. **SUMMARIZE** the key points into exactly 3 Korean bullet points.
-        3. IGNORE marketing fluff, focus on facts (What, Who, Why).
-        4. If the content is too short, perform a best-effort summary based on title.
+        ---
 
-        Output Format (Strictly follow this):
-        [Korean Title]
-        - Point 1 (Korean)
-        - Point 2 (Korean)
-        - Point 3 (Korean)
+        ## CRITICAL RULES
+
+        ### Language
+        - **ALL output must be in Korean**
+        - NO English except:
+          - Product names (Claude, GPT-4, Cursor)
+          - Well-known acronyms (LLM, ROI, API, SaaS)
+          - Company names when commonly written in English (OpenAI, Microsoft)
+
+        ### Translation Quality Standards
+
+        **1. Natural Korean (자연스러운 한국어)**
+        ❌ "~입니다", "~되었습니다" (formal written)
+        ✅ "~임", "~됨" or 체언종결 (professional brief)
+
+        ❌ "~것으로 나타났다", "~라고 발표했다"
+        ✅ Direct statement (불필요한 인용 구조 제거)
+
+        **2. Technical Terms (Consistency Table)**
+        | English | Korean (USE) | 금지어 |
+        |---------|--------------|--------|
+        | AI Agent | AI 에이전트 | AI 에이전트들, 에이전트 솔루션 |
+        | Implementation | 도입, 적용 | 구현, 이행 |
+        | Workflow | 워크플로 | 작업 흐름, 업무 흐름 |
+        | Case Study | 사례 | 케이스 스터디 |
+        | ROI | ROI | 투자수익률 |
+        | Deploy | 배포 | 디플로이 |
+        | Enterprise | 기업, 엔터프라이즈 | 엔터프라이즈급 |
+
+        **3. Numbers & Metrics**
+        - Percentage: 50% (no space)
+        - Money: 1,000만 달러, 100억 원
+        - Time: 3개월, 2주, 6시간
+        - Dates: 2024년 3분기, 2025년 2월
+
+        ---
+
+        ## Output Format
+
+        ### Title (제목)
+        **Structure:** [주체] + [핵심 행동/결과] + [구체적 수치/기능]
+
+        **Rules:**
+        - Maximum 60 characters
+        - Remove unnecessary words
+        - Include specific numbers when available
+        - Use active voice
+
+        ### Summary (요약)
+        **3 Bullet Points - Exact Format:**
+        [한국어 제목]
+
+        [WHAT: 핵심 사실 + 구체적 수치/기능]
+        [WHY: AX 실무자 관점에서 왜 중요한지 + 영향 범위]
+        [ACTION: 실무 활용 방안 또는 핵심 인사이트]
+
+        **Each bullet rules:**
+        - 1-2 sentences max
+        - 80 characters max per bullet
+        - Start with subject (주어 명시)
+        - No passive voice
+        - Include numbers/metrics when available
         """
         
         try:
