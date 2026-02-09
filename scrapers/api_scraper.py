@@ -5,6 +5,7 @@ from .base import NewsScraper
 from config import Config
 
 class HackerNewsScraper(NewsScraper):
+    print(">>> LOADING API SCRAPER: VERSION FIX-1215 <<<")
     def fetch_news(self) -> List[Dict]:
         # Using Algolia API for search
         url = "http://hn.algolia.com/api/v1/search_by_date"
