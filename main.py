@@ -9,7 +9,10 @@ from notifier import TelegramNotifier
 from config import Config
 
 def job():
-    print("=== Starting V2 Job ===")
+    print("="*30)
+    print(">>> RUNNING VERSION: 2026-02-09 (SIMPLIFIED) <<<")
+    print(">>> IF YOU DO NOT SEE THIS, YOU ARE RUNNING OLD CODE <<<")
+    print("="*30)
     
     # 1. Define Sources (V2)
     # International Sources

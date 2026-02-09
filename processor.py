@@ -163,7 +163,9 @@ class ContentProcessor:
             else:
                 # Fallback if no {} found
                 print(f"⚠️ No JSON found in response. Text: {text[:50]}...")
-                raise ValueError("No JSON object found")
+                # Trigger heuristic instead of raising generic error
+                h_score, h_reason, h_action = self._heuristic_score(title, content)
+                return h_score, h_reason, h_action
             
             score = float(data.get('score', 0))
             reason = data.get('reason', "판단 근거 없음")
@@ -173,7 +175,6 @@ class ContentProcessor:
 
         except Exception as e:
             print(f"Scoring Error: {e} | Fallback to Heuristic")
-            # Heuristic Fallback
             h_score, h_reason, h_action = self._heuristic_score(title, content)
             return h_score, h_reason, h_action
 

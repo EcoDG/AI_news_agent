@@ -70,12 +70,16 @@ NAVER_QUERIES = {
         '"Claude" OR "클로드"', 
         '"Gemini" OR "제미나이"',
         '"GPT" OR "ChatGTP" OR "챗GPT"',
-        '"코딩 에이전트"',
-        '"AI 코딩" OR "AI 개발"',
+        '"코딩 에이전트" OR "AI 코딩" OR "AI 개발"',
         '"Cursor" OR "Windsurf" OR "Cline" OR "커서 에디터"',
-        '"AI 에이전트" OR "업무 자동화"',
-        '"생성형 AI" AND 기업',
-        '"AX" AND 사례',
+        '"AI 에이전트" OR "AI 비서" OR "AI 어시스턴트"',
+        '"업무 자동화" OR "RPA" OR "워크플로우"',
+        '("AX" OR "AI 전환" OR "DX") AND (사례 OR 도입 OR 성과)',
+        '"생성형 AI" AND (기업 OR B2B OR 구축)',
+        '"RAG" OR "검색 증강 생성"',
+        '"LLM" AND (도입 OR 활용 OR 솔루션)',
+        '"온디바이스 AI" OR "NPU"',
+        '"소버린 AI" OR "한국형 AI"',
     ],
     
     # TIER 2: Fallback (If Tier 1 is empty)
@@ -87,7 +91,7 @@ NAVER_QUERIES = {
         '"인공지능" AND (솔루션 OR 서비스)'
     ],
     
-    "exclude": ['-게임', '-웹툰', '-영화', '-연예', '-아이돌', '-캐릭터', '-NFT']
+    "exclude": ['-게임', '-웹툰', '-영화', '-연예', '-아이돌', '-캐릭터', '-NFT', '-축제', '-행사', '-의료', '-바이오', '-식물', '-정원']
 }
 
 class NaverNewsScraper(NewsScraper):
