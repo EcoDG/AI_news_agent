@@ -62,14 +62,21 @@ class ContentProcessor:
                     time.sleep(10 * (attempt + 1)) 
             
             if not summary_block:
-                # [Graceful Fallback] If all LLMs fail, show raw content instead of error
-                fallback_text = clean_content[:300] if clean_content else "원문 링크를 참고해주세요."
+                # [Graceful Fallback] Title Only
                 last_error = getattr(self, 'last_error', 'Unknown Error')
-                summary_block = f"{item['title']}\n{fallback_text}...\n\n[⚠️ AI 요약 불가: {last_error}]"
+                if "Korean" in item.get('source', ''): # If domestic
+                     summary_block = item['title']
+                else:
+                     summary_block = f"{item['title']} (번역 실패)"
+                
+                # Append error as debug note? User wants clean output.
+                # summary_block += f"\n[Debug: {last_error}]" 
+                # Let's hide error if user wants clean output, or keep it subtle.
+                pass
 
-            # Add Agent Score Footer
+            # Add Agent Score Footer (Compact)
             if 'agent_score' in item and item['agent_score'] > 0:
-                summary_block += f"\n\n[🤖 에이전트 판단: {item['agent_score']}점]\n- 이유: {item['agent_reason']}\n- 실행: {item.get('agent_action', '없음')}"
+                summary_block += f"\n[💡 AI 점수: {item['agent_score']} / {item['agent_reason']}]"
 
             item['processed_summary'] = summary_block
             processed.append(item)
@@ -308,34 +315,18 @@ class ContentProcessor:
         ---
 
         ## Output Format
-
-        ### Title (제목)
-        **Structure:** [주체] + [핵심 행동/결과] + [구체적 수치/기능]
-
-        **Rules:**
-        - Maximum 60 characters
-        - Remove unnecessary words
-        - Include specific numbers when available
-        - Use active voice
-
-        ### Summary (요약)
-        **3 Bullet Points - Exact Format:**
-        [한국어 제목]
-
-        [WHAT: 핵심 사실 + 구체적 수치/기능]
-        [WHY: AX 실무자 관점에서 왜 중요한지 + 영향 범위]
-        [ACTION: 실무 활용 방안 또는 핵심 인사이트]
-
-        **Each bullet rules:**
-        - 1-2 sentences max
-        - 80 characters max per bullet
-        - Start with subject (주어 명시)
-        - No passive voice
-        - Include numbers/metrics when available
+        Just the **Korean Translated Title**.
+        - Do NOT include original English title.
+        - Do NOT add bullets or summary.
+        - Do NOT add "Title:" prefix.
+        - Keep it under 80 characters.
         """
         
         try:
-            return self._generate_content_robust(prompt)
+            # For domestic news, if it's alread Korean, just return it? 
+            # But the input 'content' might be English for international.
+            # We rely on the LLM to detect.
+             return self._generate_content_robust(prompt)
         except Exception as e:
             self.last_error = str(e) # Store error for debugging
             print(f"Summary generation failed: {e}")
