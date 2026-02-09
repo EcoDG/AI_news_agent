@@ -48,7 +48,7 @@ KEYWORD_TIER_C = {
 
 NEGATIVE_KEYWORDS = {
     "keywords": [
-        "consumer app", "gaming", "NFT", "metaverse", "crypto", "web3",
+        "consumer app", "gaming", "metaverse", 
         "hiring", "job posting", "conference", "webinar", "event",
     ],
     "score": -99
@@ -59,7 +59,7 @@ IMMEDIATE_REJECT_PATTERNS = [
     r"launching soon|beta.*release|coming soon",
     r"free trial|promotion",
     r"game|movie|webtoon|idol|entertainment",
-    r"cryptocurrency|NFT|metaverse",
+    # r"cryptocurrency|NFT|metaverse", # Allow Crypto
 ]
 
 class RSSScraper(NewsScraper):

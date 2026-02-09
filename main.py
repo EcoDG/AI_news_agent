@@ -25,9 +25,11 @@ def job():
     
     # Domestic Sources (RSS)
     domestic_feeds = [
-        # "https://www.aitimes.com/rss/allSection.xml", # 404 Error
-        "https://rss.etnews.com/Section902.xml", 
-        # "https://zdnet.co.kr/rss/all", # 404 Error
+        # Google News is the best aggregator for "Artificial Intelligence" in Korea
+        "https://news.google.com/rss/search?q=%EC%9D%B8%EA%B3%B5%EC%A7%80%EB%8A%A5+when:24h&hl=ko&gl=KR&ceid=KR:ko",
+        "https://rss.etnews.com/Section902.xml", # ETNews AI
+        # "http://feeds.feedburner.com/zdkorea", # ZDNet (often unstable but try)
+        "https://www.hankyung.com/feed/ai", # Hankyung AI
     ]
     
     # 2. Fetch & Score
