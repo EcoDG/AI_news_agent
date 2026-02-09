@@ -86,6 +86,7 @@ def job():
         debug_msg += f"- Naver ID Loaded: {'YES' if Config.NAVER_CLIENT_ID else 'NO'}\n"
         debug_msg += f"- Naver Secret Loaded: {'YES' if Config.NAVER_CLIENT_SECRET else 'NO'}\n"
         debug_msg += f"- Google Key Loaded: {'YES' if Config.GOOGLE_API_KEY else 'NO'}\n"
+        debug_msg += f"- Naver Error: {getattr(naver_scraper, 'last_error', 'None')}\n" # Added
         debug_msg += f"- Raw Naver items found: {len(dom_api_items)}\n"
         debug_msg += f"- Raw/Dedup/Candidate: {len(dom_api_items)}/{len(unique_dom)}/{len(candidates_dom)}"
         
