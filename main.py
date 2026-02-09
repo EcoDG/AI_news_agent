@@ -25,9 +25,9 @@ def job():
     
     # Domestic Sources (RSS)
     domestic_feeds = [
-        "https://www.aitimes.com/rss/allSection.xml", # Updated URL
+        # "https://www.aitimes.com/rss/allSection.xml", # 404 Error
         "https://rss.etnews.com/Section902.xml", 
-        "https://zdnet.co.kr/rss/all", 
+        # "https://zdnet.co.kr/rss/all", # 404 Error
     ]
     
     # 2. Fetch & Score

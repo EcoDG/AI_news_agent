@@ -163,5 +163,4 @@ class NaverNewsScraper(NewsScraper):
                 self.last_error = f"{e}"
                 print(f"Error Naver query '{q}': {e}")
                 
-        # If no items found but we had errors, return a debug item? No, let main handle it.
-        return all_items
+
