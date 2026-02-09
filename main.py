@@ -43,10 +43,14 @@ def job():
     dom_rss_items = dom_scraper.fetch_news()
     print(f"  - RSS Items: {len(dom_rss_items)}")
     
-    # 2. API
-    naver_scraper = NaverNewsScraper()
+    # 2. API (Simple v3)
+    # from scrapers.api_scraper import NaverNewsScraper
+    from scrapers.simple_naver import SimpleNaverScraper
+    
+    print("Fetching Domestic News (Naver Simple V3)...")
+    naver_scraper = SimpleNaverScraper()
     dom_api_items = naver_scraper.fetch_news()
-    print(f"  - Naver Items: {len(dom_api_items)}")
+    print(f"  - Naver V3 Items: {len(dom_api_items)}")
     
     # Merge & Deduplicate
     all_dom_items = dom_rss_items + dom_api_items
